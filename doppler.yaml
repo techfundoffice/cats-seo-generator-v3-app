@@ -1,0 +1,3 @@
+setup:
+  project: ghl-marketplace-app
+  config: dev
