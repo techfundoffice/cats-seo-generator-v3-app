@@ -1347,10 +1347,6 @@ onUnmounted(() => {
   margin-bottom: 24px;
 }
 
-/* Move Activity/Output Log above Autonomous Mode */
-.single-column .activity-section {
-  order: -1;
-}
 
 .section {
   background: white;
