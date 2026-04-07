@@ -21,6 +21,9 @@ RUN pip3 install youtube_search --break-system-packages 2>/dev/null || pip3 inst
 # Build TypeScript API
 RUN npx tsc
 
+# Copy vendored lib (amazon-creatorsapi compiled dist) into TypeScript output
+RUN cp -r src/lib dist/lib
+
 # Build Vue UI
 RUN npx vite build --config ui/vite.config.ts
 
