@@ -1,15 +1,22 @@
 {
   "name": "SEO Generator V3",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-18-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.11"
     }
   },
-  "forwardPorts": [3000, 5173],
+  "forwardPorts": [
+    3000,
+    5173
+  ],
   "portsAttributes": {
-    "3000": { "label": "Express API" },
-    "5173": { "label": "Vite UI" }
+    "3000": {
+      "label": "Express API"
+    },
+    "5173": {
+      "label": "Vite UI"
+    }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
