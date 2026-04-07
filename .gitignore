@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+src/lib/amazon-creatorsapi/node_modules/
+
+# Build output
+dist/
+ui/dist/
+.vite/
+
+# Environment variables
+.env
+.env.local
+
+# Data files (generated at runtime)
+data/*.jsonl
+data/*.json
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.sw?
+
+# OS
+.DS_Store

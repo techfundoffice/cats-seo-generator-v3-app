@@ -1,0 +1,50 @@
+{
+  "name": "seo-generator-v3",
+  "version": "1.0.0",
+  "description": "Standalone SEO Article Generator V3 - AI-powered content generation with Amazon affiliate integration",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm:dev:api\" \"npm:dev:ui\"",
+    "dev:api": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:ui": "vite --config ui/vite.config.ts",
+    "dev:doppler": "doppler run -- npm run dev",
+    "build": "tsc && cp -r src/lib dist/lib && vite build --config ui/vite.config.ts",
+    "start": "node dist/index.js",
+    "test": "node --max-old-space-size=4096 node_modules/.bin/jest --config jest.config.ts",
+    "lint": "eslint src/**/*.ts",
+    "postinstall": "cd src/lib/amazon-creatorsapi && npm install",
+    "setup": "npm install && pip install youtube_search"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.39",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "googleapis": "^144.0.0",
+    "harper.js": "^1.6.0",
+    "json-repair-js": "^1.0.0",
+    "seord": "^0.0.5",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^8.57.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.9",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vue": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
