@@ -52,11 +52,14 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             docker pull ghcr.io/${{ github.repository }}/seo-generator-v3:latest
+            # Stop PM2 process if running (transitioning to Docker)
+            su -c 'pm2 stop seo-generator-v3 2>/dev/null || true' claudeuser
             docker stop seo-generator-v3 || true
             docker rm seo-generator-v3 || true
             docker run -d \
               --name seo-generator-v3 \
               --restart unless-stopped \
               -p 3000:3000 \
+              --add-host=host.docker.internal:host-gateway \
               --env-file /opt/seo-generator-v3/.env \
               ghcr.io/${{ github.repository }}/seo-generator-v3:latest
