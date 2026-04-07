@@ -358,28 +358,15 @@
           </div>
         </div>
 
-        <!-- Content Library -->
+        <!-- Recent Articles -->
         <div class="section recent-section">
           <div class="section-header">
-            <h2>📚 Content Library</h2>
-            <span class="count">{{ articleSearch || articleCategoryFilter ? filteredArticles.length + ' of ' + recentArticles.length + ' articles' : recentArticles.length + ' articles' }}</span>
+            <h2>📰 Recent Articles</h2>
+            <span class="count">{{ totalArticleCount > recentArticles.length ? totalArticleCount.toLocaleString() + ' total' : recentArticles.length + ' articles' }}</span>
           </div>
 
-          <div class="article-filters">
-            <input
-              v-model="articleSearch"
-              type="text"
-              placeholder="Search articles..."
-              class="sitemap-search"
-            />
-            <select v-model="articleCategoryFilter" class="category-select">
-              <option value="">All Categories</option>
-              <option v-for="cat in articleCategories" :key="cat" :value="cat">{{ formatCategory(cat) }}</option>
-            </select>
-          </div>
-
-          <div class="articles-list" v-if="filteredArticles.length > 0">
-            <div class="article-item" v-for="article in filteredArticles" :key="article.slug">
+          <div class="articles-list" v-if="recentArticles.length > 0">
+            <div class="article-item" v-for="article in recentArticles" :key="article.slug">
               <div class="article-info">
                 <strong>{{ article.title || article.keyword }}</strong>
                 <div class="article-meta">
@@ -420,9 +407,6 @@
             </div>
           </div>
 
-          <div class="empty-state" v-else-if="articleSearch || articleCategoryFilter">
-            <p>No articles match your search</p>
-          </div>
           <div class="empty-state" v-else>
             <p>No articles generated yet</p>
           </div>
@@ -601,8 +585,6 @@ const pauseAutoScroll = ref(false)
 const logContainer = ref<HTMLElement | null>(null)
 const sitemapUrls = ref<SitemapItem[]>([])
 const sitemapSearch = ref('')
-const articleSearch = ref('')
-const articleCategoryFilter = ref('')
 const totalArticleCount = ref(0)
 const isPolling = ref(false)
 const lastPollTime = ref('')
@@ -674,30 +656,6 @@ const filteredSitemapUrls = computed(() => {
     item.title.toLowerCase().includes(search) ||
     item.slug.toLowerCase().includes(search)
   )
-})
-
-const articleCategories = computed(() => {
-  const cats = new Set<string>()
-  for (const a of recentArticles.value) {
-    if (a.category) cats.add(a.category)
-  }
-  return [...cats].sort()
-})
-
-const filteredArticles = computed(() => {
-  let items = recentArticles.value
-  if (articleCategoryFilter.value) {
-    items = items.filter((a: any) => a.category === articleCategoryFilter.value)
-  }
-  if (articleSearch.value) {
-    const q = articleSearch.value.toLowerCase()
-    items = items.filter((a: any) =>
-      (a.title || '').toLowerCase().includes(q) ||
-      (a.keyword || '').toLowerCase().includes(q) ||
-      (a.slug || '').toLowerCase().includes(q)
-    )
-  }
-  return items
 })
 
 // Filtered log entries based on search query and status filter
@@ -1912,30 +1870,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 500px;
+  max-height: 300px;
   overflow-y: auto;
-}
-
-.article-filters {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.category-select {
-  padding: 6px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #374151;
-  background: white;
-  cursor: pointer;
-  min-width: 160px;
-}
-.category-select:focus {
-  outline: none;
-  border-color: #6366f1;
 }
 
 .article-item {
