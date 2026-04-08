@@ -15,6 +15,13 @@
         <p class="subtitle">Cloudflare AI-native generation with <strong>indexing verification</strong>, autonomous categories &amp; EEAT optimization</p>
       </div>
       <div class="header-actions">
+        <button class="btn btn-secondary" @click="toggleAllSections" :title="allSectionsCollapsed ? 'Expand all sections' : 'Collapse all sections'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline v-if="allSectionsCollapsed" points="6 9 12 15 18 9"/>
+            <polyline v-else points="18 15 12 9 6 15"/>
+          </svg>
+          {{ allSectionsCollapsed ? 'Expand All' : 'Collapse All' }}
+        </button>
         <button class="btn btn-secondary" @click="refreshAll">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
@@ -25,6 +32,13 @@
     </header>
 
     <!-- Stats Grid -->
+    <div class="stats-section-header" @click="toggleSection('stats')">
+      <span>📈 Summary Stats</span>
+      <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['stats'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </div>
+    <div v-show="!sectionCollapsed['stats']">
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">
@@ -93,16 +107,23 @@
         </div>
       </div>
     </div>
+    </div>
 
     <div class="single-column">
         <!-- Autonomous Mode -->
         <div class="section autonomous-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('autonomous')">
             <h2>⚡ Autonomous Mode</h2>
-            <span class="status-badge" :class="{ active: autonomousRunning }">
-              {{ autonomousRunning ? '● Running' : '○ Stopped' }}
-            </span>
+            <div class="section-header-right">
+              <span class="status-badge" :class="{ active: autonomousRunning }">
+                {{ autonomousRunning ? '● Running' : '○ Stopped' }}
+              </span>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['autonomous'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
           </div>
+          <div v-show="!sectionCollapsed['autonomous']">
           <p class="section-desc">Continuously generates articles across V3-exclusive categories</p>
 
           <div class="interval-selector">
@@ -138,15 +159,21 @@
             </div>
             <span class="progress-text">{{ queueData.percentComplete }}% complete</span>
           </div>
+          </div><!-- end autonomous body -->
         </div>
 
         <!-- Generate Single Article -->
         <div class="section generator-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('generator')">
             <h2>📝 Generate Single Article</h2>
-            <span class="badge" v-if="isGenerating">Generating...</span>
+            <div class="section-header-right">
+              <span class="badge" v-if="isGenerating">Generating...</span>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['generator'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
           </div>
-
+          <div v-show="!sectionCollapsed['generator']">
           <div class="input-group">
             <label for="keyword">Target Keyword</label>
             <input
@@ -169,27 +196,32 @@
             </svg>
             {{ isGenerating ? 'Generating...' : 'Generate Article' }}
           </button>
+          </div><!-- end generator body -->
         </div>
 
         <!-- Article Progress & Activity -->
         <div class="section activity-section">
           <!-- View toggle -->
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('activity')">
             <h2>Live Output Log</h2>
-            <div class="log-header-actions">
+            <div class="section-header-right">
               <span class="polling-indicator" :class="{ active: isPolling }">
                 <span class="polling-dot"></span>
                 {{ isPolling ? 'Live' : 'Paused' }}
               </span>
-              <button class="btn btn-sm btn-secondary" @click="copyLog" title="Copy log to clipboard">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                Copy
-              </button>
-              <button class="btn btn-sm btn-secondary" @click="pollActivityLog">Refresh</button>
+              <div class="log-header-actions" @click.stop>
+                <button class="btn btn-sm btn-secondary" @click="copyLog" title="Copy log to clipboard">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  Copy
+                </button>
+                <button class="btn btn-sm btn-secondary" @click="pollActivityLog">Refresh</button>
+              </div>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['activity'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </div>
           </div>
-
-          <div class="developer-view">
+          <div v-show="!sectionCollapsed['activity']">
             <!-- Session Health Banner (original) -->
             <div class="health-banner-inner" v-if="sessionHealth">
               <div class="health-header">
@@ -315,14 +347,20 @@
 
         <!-- Index Status (V3-unique) -->
         <div class="section index-status-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('indexing')">
             <h2>🔍 Indexing Status</h2>
-            <div class="index-actions">
+            <div class="section-header-right">
               <span class="count" v-if="indexStatus">{{ indexStatus.indexed }}/{{ indexStatus.total }} indexed</span>
-              <button class="btn btn-sm btn-secondary" @click="refreshIndexStatus">Refresh</button>
-              <button class="btn btn-sm btn-secondary" @click="processIndexQueue">Process Queue</button>
+              <div class="index-actions" @click.stop>
+                <button class="btn btn-sm btn-secondary" @click="refreshIndexStatus">Refresh</button>
+                <button class="btn btn-sm btn-secondary" @click="processIndexQueue">Process Queue</button>
+              </div>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['indexing'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </div>
           </div>
+          <div v-show="!sectionCollapsed['indexing']">
 
           <div class="index-summary" v-if="indexStatus">
             <div class="index-stat indexed">
@@ -342,13 +380,18 @@
           <div class="empty-state" v-else>
             <p>Loading index status...</p>
           </div>
+          </div><!-- end indexing body -->
         </div>
 
         <!-- Category Breakdown -->
         <div class="section categories-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('categories')">
             <h2>📊 Category Breakdown</h2>
+            <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['categories'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
           </div>
+          <div v-show="!sectionCollapsed['categories']">
           <div class="category-grid">
             <div class="category-item" v-for="(count, category) in queueData.categoryBreakdown" :key="category">
               <span class="category-icon">{{ getCategoryIcon(category) }}</span>
@@ -356,15 +399,21 @@
               <span class="category-name">{{ formatCategory(category) }}</span>
             </div>
           </div>
+          </div><!-- end categories body -->
         </div>
 
         <!-- Recent Articles -->
         <div class="section recent-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('recent')">
             <h2>📰 Recent Articles</h2>
-            <span class="count">{{ totalArticleCount > recentArticles.length ? totalArticleCount.toLocaleString() + ' total' : recentArticles.length + ' articles' }}</span>
+            <div class="section-header-right">
+              <span class="count">{{ totalArticleCount > recentArticles.length ? totalArticleCount.toLocaleString() + ' total' : recentArticles.length + ' articles' }}</span>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['recent'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
           </div>
-
+          <div v-show="!sectionCollapsed['recent']">
           <div class="articles-list" v-if="recentArticles.length > 0">
             <div class="article-item" v-for="article in recentArticles" :key="article.slug">
               <div class="article-info">
@@ -410,22 +459,29 @@
           <div class="empty-state" v-else>
             <p>No articles generated yet</p>
           </div>
+          </div><!-- end recent body -->
         </div>
 
         <!-- Sitemap Section -->
         <div class="section sitemap-section">
-          <div class="section-header">
+          <div class="section-header" @click="toggleSection('sitemap')">
             <h2>🗺️ Live Sitemap (All Categories)</h2>
-            <div class="sitemap-actions">
+            <div class="section-header-right">
               <span class="count">{{ sitemapUrls.length }} pages</span>
-              <button class="btn btn-sm btn-secondary" @click="refreshSitemap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                </svg>
-                Refresh
-              </button>
+              <div class="sitemap-actions" @click.stop>
+                <button class="btn btn-sm btn-secondary" @click="refreshSitemap">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+              <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['sitemap'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
             </div>
           </div>
+          <div v-show="!sectionCollapsed['sitemap']">
 
           <div class="sitemap-filter">
             <input
@@ -458,26 +514,33 @@
           <div class="empty-state" v-else>
             <p>Loading sitemap...</p>
           </div>
+          </div><!-- end sitemap body -->
         </div>
     </div>
 
     <!-- Generated Article Preview -->
     <div class="section preview-section" v-if="generatedArticle">
-      <div class="section-header">
+      <div class="section-header" @click="toggleSection('preview')">
         <h2>Generated Article</h2>
-        <div class="preview-actions">
-          <a
-            v-if="generatedArticle.liveUrl"
-            :href="generatedArticle.liveUrl"
-            target="_blank"
-            rel="noopener"
-            class="btn btn-success"
-          >
-            View Live →
-          </a>
-          <button class="btn btn-secondary" @click="copyArticle">Copy HTML</button>
+        <div class="section-header-right">
+          <div class="preview-actions" @click.stop>
+            <a
+              v-if="generatedArticle.liveUrl"
+              :href="generatedArticle.liveUrl"
+              target="_blank"
+              rel="noopener"
+              class="btn btn-success"
+            >
+              View Live →
+            </a>
+            <button class="btn btn-secondary" @click="copyArticle">Copy HTML</button>
+          </div>
+          <svg class="section-chevron" :class="{ collapsed: sectionCollapsed['preview'] }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
         </div>
       </div>
+      <div v-show="!sectionCollapsed['preview']">
 
       <div class="article-preview">
         <div class="preview-meta">
@@ -488,6 +551,7 @@
         </div>
         <div class="preview-content" v-html="generatedArticle.preview"></div>
       </div>
+      </div><!-- end preview body -->
     </div>
 
     <div class="toast" v-if="toast.show" :class="toast.type">
@@ -596,6 +660,32 @@ const logSearchQuery = ref('')
 const logStatusFilter = ref<'all' | 'success' | 'error' | 'info' | 'generating'>('all')
 const collapsedKeywords = ref<Set<string>>(new Set())
 const historyLoaded = ref(false)
+
+// Section collapse state — persisted to localStorage
+const SECTION_STORAGE_KEY = 'seo-v3-sections-collapsed'
+const _loadSectionState = (): Record<string, boolean> => {
+  try { return JSON.parse(localStorage.getItem(SECTION_STORAGE_KEY) || '{}') } catch { return {} }
+}
+const sectionCollapsed = ref<Record<string, boolean>>(_loadSectionState())
+
+const toggleSection = (id: string) => {
+  sectionCollapsed.value = { ...sectionCollapsed.value, [id]: !sectionCollapsed.value[id] }
+  try { localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(sectionCollapsed.value)) } catch {}
+}
+
+const toggleAllSections = () => {
+  const sectionIds = ['stats', 'autonomous', 'generator', 'activity', 'indexing', 'categories', 'recent', 'sitemap', 'preview']
+  const allCollapsed = sectionIds.every(id => sectionCollapsed.value[id])
+  const next: Record<string, boolean> = {}
+  for (const id of sectionIds) next[id] = !allCollapsed
+  sectionCollapsed.value = next
+  try { localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(next)) } catch {}
+}
+
+const allSectionsCollapsed = computed(() => {
+  const ids = ['stats', 'autonomous', 'generator', 'activity', 'indexing', 'categories', 'recent', 'sitemap', 'preview']
+  return ids.every(id => sectionCollapsed.value[id])
+})
 
 
 const queueData = reactive<QueueData>({
@@ -1364,6 +1454,49 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header:hover {
+  opacity: 0.85;
+}
+
+.section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-chevron {
+  flex-shrink: 0;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+}
+
+.section-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Stats section collapsible header */
+.stats-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 4px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.stats-section-header:hover {
+  color: #374151;
 }
 
 .section-header h2 {
