@@ -663,6 +663,7 @@ const historyLoaded = ref(false)
 
 // Section collapse state — persisted to localStorage
 const SECTION_STORAGE_KEY = 'seo-v3-sections-collapsed'
+const SECTION_IDS = ['stats', 'autonomous', 'generator', 'activity', 'indexing', 'categories', 'recent', 'sitemap', 'preview'] as const
 const _loadSectionState = (): Record<string, boolean> => {
   try { return JSON.parse(localStorage.getItem(SECTION_STORAGE_KEY) || '{}') } catch { return {} }
 }
@@ -674,17 +675,15 @@ const toggleSection = (id: string) => {
 }
 
 const toggleAllSections = () => {
-  const sectionIds = ['stats', 'autonomous', 'generator', 'activity', 'indexing', 'categories', 'recent', 'sitemap', 'preview']
-  const allCollapsed = sectionIds.every(id => sectionCollapsed.value[id])
+  const allCollapsed = SECTION_IDS.every(id => sectionCollapsed.value[id])
   const next: Record<string, boolean> = {}
-  for (const id of sectionIds) next[id] = !allCollapsed
+  for (const id of SECTION_IDS) next[id] = !allCollapsed
   sectionCollapsed.value = next
   try { localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify(next)) } catch {}
 }
 
 const allSectionsCollapsed = computed(() => {
-  const ids = ['stats', 'autonomous', 'generator', 'activity', 'indexing', 'categories', 'recent', 'sitemap', 'preview']
-  return ids.every(id => sectionCollapsed.value[id])
+  return SECTION_IDS.every(id => sectionCollapsed.value[id])
 })
 
 
@@ -1487,7 +1486,6 @@ onUnmounted(() => {
   margin-bottom: 12px;
   cursor: pointer;
   user-select: none;
-  font-size: 14px;
   font-weight: 600;
   color: #6b7280;
   letter-spacing: 0.02em;
