@@ -205,8 +205,6 @@
           <!-- View toggle -->
           <div class="section-header" @click="toggleSection('activity')">
             <h2>Live Output Log</h2>
-            <div class="log-header-actions">
-              <span class="polling-indicator" :class="{ active: isPolling, error: pollError }" :title="pollError ? 'Last poll failed — retrying' : ''">
             <div class="section-header-right">
               <span class="polling-indicator" :class="{ active: isPolling }">
                 <span class="polling-dot"></span>
