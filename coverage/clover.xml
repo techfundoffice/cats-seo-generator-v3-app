@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1775614462497" clover="3.2.0">
+  <project timestamp="1775614462497" name="All files">
+    <metrics statements="19" coveredstatements="19" conditionals="10" coveredconditionals="10" methods="3" coveredmethods="3" elements="32" coveredelements="32" complexity="0" loc="19" ncloc="19" packages="1" files="1" classes="1"/>
+    <file name="seo-skills.ts" path="/home/runner/work/cats-seo-generator-v3-app/cats-seo-generator-v3-app/src/config/seo-skills.ts">
+      <metrics statements="19" coveredstatements="19" conditionals="10" coveredconditionals="10" methods="3" coveredmethods="3"/>
+      <line num="6" count="1" type="stmt"/>
+      <line num="7" count="1" type="stmt"/>
+      <line num="13" count="1" type="stmt"/>
+      <line num="74" count="1" type="stmt"/>
+      <line num="89" count="1" type="stmt"/>
+      <line num="99" count="1" type="stmt"/>
+      <line num="139" count="1" type="stmt"/>
+      <line num="140" count="3" type="stmt"/>
+      <line num="141" count="3" type="cond" truecount="2" falsecount="0"/>
+      <line num="147" count="1" type="stmt"/>
+      <line num="148" count="1" type="stmt"/>
+      <line num="159" count="1" type="stmt"/>
+      <line num="163" count="8" type="cond" truecount="2" falsecount="0"/>
+      <line num="164" count="2" type="stmt"/>
+      <line num="165" count="6" type="cond" truecount="2" falsecount="0"/>
+      <line num="166" count="2" type="stmt"/>
+      <line num="167" count="4" type="cond" truecount="2" falsecount="0"/>
+      <line num="168" count="2" type="stmt"/>
+      <line num="170" count="2" type="stmt"/>
+    </file>
+  </project>
+</coverage>
