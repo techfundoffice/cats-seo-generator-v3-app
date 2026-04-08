@@ -690,26 +690,29 @@ interface LogGroup {
 const groupedLog = computed((): LogGroup[] => {
   const map = new Map<string, LogGroup>()
 
+  // filteredLog is newest-first (entries are prepended via unshift).
+  // Map insertion order reflects first encounter, so iterating the map gives groups
+  // in newest-first order naturally — no time-string comparison needed.
   for (const entry of filteredLog.value) {
     const kw = entry.keyword || '_ungrouped'
     let group = map.get(kw)
     if (!group) {
+      // First encounter for this keyword is the newest entry; record its time once.
       group = { keyword: kw, entries: [], latestTime: entry.time, hasError: false, hasSuccess: false }
       map.set(kw, group)
     }
     group.entries.push(entry)
     if (entry.status === 'error') group.hasError = true
     if (entry.status === 'success') group.hasSuccess = true
-    // Keep latestTime as the most recently-added entry (first in unshifted log = index 0)
-    group.latestTime = group.entries[0].time
   }
 
-  // Sort groups: _ungrouped last, all others by most recent entry first (entries are newest-first)
-  return Array.from(map.values()).sort((a, b) => {
-    if (a.keyword === '_ungrouped') return 1
-    if (b.keyword === '_ungrouped') return -1
-    return a.latestTime > b.latestTime ? -1 : a.latestTime < b.latestTime ? 1 : 0
-  })
+  // Preserve Map insertion order (newest group first); push _ungrouped to the end.
+  const groups = Array.from(map.values())
+  const ungroupedIdx = groups.findIndex(g => g.keyword === '_ungrouped')
+  if (ungroupedIdx > 0) {
+    groups.push(...groups.splice(ungroupedIdx, 1))
+  }
+  return groups
 })
 
 const toggleKeywordGroup = (keyword: string) => {
