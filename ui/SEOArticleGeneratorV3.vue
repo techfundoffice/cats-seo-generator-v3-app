@@ -158,6 +158,7 @@
               <div class="progress-fill" :style="{ width: queueData.percentComplete + '%' }"></div>
             </div>
             <span class="progress-text">{{ queueData.percentComplete }}% complete</span>
+            <span v-if="estimatedTimeRemaining" class="progress-eta">{{ estimatedTimeRemaining }}</span>
           </div>
           </div><!-- end autonomous body -->
         </div>
@@ -204,10 +205,12 @@
           <!-- View toggle -->
           <div class="section-header" @click="toggleSection('activity')">
             <h2>Live Output Log</h2>
+            <div class="log-header-actions">
+              <span class="polling-indicator" :class="{ active: isPolling, error: pollError }" :title="pollError ? 'Last poll failed — retrying' : ''">
             <div class="section-header-right">
               <span class="polling-indicator" :class="{ active: isPolling }">
                 <span class="polling-dot"></span>
-                {{ isPolling ? 'Live' : 'Paused' }}
+                {{ isPolling ? (pollError ? '⚠ Retrying' : 'Live') : 'Paused' }}
               </span>
               <div class="log-header-actions" @click.stop>
                 <button class="btn btn-sm btn-secondary" @click="copyLog" title="Copy log to clipboard">
@@ -321,7 +324,7 @@
                     @click="toggleEntryExpand(entry)"
                   >
                     <span class="log-time">{{ entry.time }}</span>
-                    <span class="log-priority" :class="entry.priority">{{ entry.priority?.toUpperCase() || 'INFO' }}</span>
+                    <span class="log-priority" :class="entry.priority || 'INFO'">{{ entry.priority?.toUpperCase() || 'INFO' }}</span>
                     <span class="log-message">{{ entry.message }}</span>
                     <span v-if="entry.source === 'history'" class="log-history-badge">history</span>
                     <span v-if="entry.errorDetail" class="log-error-detail">{{ entry.errorDetail }}</span>
@@ -629,6 +632,7 @@ interface SessionHealthData {
   rate: string
   consecutiveErrors: number
   lastError: string | null
+  avgGenerationMs?: number
 }
 
 interface SitemapItem {
@@ -651,6 +655,7 @@ const sitemapUrls = ref<SitemapItem[]>([])
 const sitemapSearch = ref('')
 const totalArticleCount = ref(0)
 const isPolling = ref(false)
+const pollError = ref(false)
 const lastPollTime = ref('')
 const indexStatus = ref<IndexStatusData | null>(null)
 const sessionHealth = ref<SessionHealthData | null>(null)
@@ -774,18 +779,29 @@ interface LogGroup {
   hasSuccess: boolean
 }
 const groupedLog = computed((): LogGroup[] => {
-  const groups: LogGroup[] = []
-  let currentGroup: LogGroup | null = null
+  const map = new Map<string, LogGroup>()
 
+  // filteredLog is newest-first (entries are prepended via unshift).
+  // Map insertion order reflects first encounter, so iterating the map gives groups
+  // in newest-first order naturally — no time-string comparison needed.
   for (const entry of filteredLog.value) {
     const kw = entry.keyword || '_ungrouped'
-    if (!currentGroup || currentGroup.keyword !== kw) {
-      currentGroup = { keyword: kw, entries: [], latestTime: entry.time, hasError: false, hasSuccess: false }
-      groups.push(currentGroup)
+    let group = map.get(kw)
+    if (!group) {
+      // First encounter for this keyword is the newest entry; record its time once.
+      group = { keyword: kw, entries: [], latestTime: entry.time, hasError: false, hasSuccess: false }
+      map.set(kw, group)
     }
-    currentGroup.entries.push(entry)
-    if (entry.status === 'error') currentGroup.hasError = true
-    if (entry.status === 'success') currentGroup.hasSuccess = true
+    group.entries.push(entry)
+    if (entry.status === 'error') group.hasError = true
+    if (entry.status === 'success') group.hasSuccess = true
+  }
+
+  // Preserve Map insertion order (newest group first); push _ungrouped to the end.
+  const groups = Array.from(map.values())
+  const ungroupedIdx = groups.findIndex(g => g.keyword === '_ungrouped')
+  if (ungroupedIdx > 0) {
+    groups.push(...groups.splice(ungroupedIdx, 1))
   }
   return groups
 })
@@ -1033,10 +1049,11 @@ const pollActivityLog = async () => {
   try {
     const response = await fetch(`${API_BASE}/activity-log?since=${lastActivityId}&limit=50`, { signal })
     if (!response.ok) {
-      isPolling.value = false
+      pollError.value = true
       isActivityPollInFlight = false
       return
     }
+    pollError.value = false
 
     const data = await response.json()
     if (!data.logs || data.logs.length === 0) {
@@ -1114,16 +1131,17 @@ const stopActivityPolling = () => {
 const generateArticle = async () => {
   if (!keyword.value.trim() || isGenerating.value) return
 
+  const currentKeyword = keyword.value.trim()
   isGenerating.value = true
   generatedArticle.value = null
-  addLogEntry(`V3 Generating: "${keyword.value}"`, 'generating')
+  addLogEntry(`V3 Generating: "${currentKeyword}"`, 'generating', undefined, undefined, undefined, undefined, currentKeyword)
 
   try {
     const response = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        keyword: keyword.value.trim()
+        keyword: currentKeyword
       })
     })
 
@@ -1132,7 +1150,7 @@ const generateArticle = async () => {
     const data = await response.json()
 
     generatedArticle.value = {
-      title: data.title || keyword.value,
+      title: data.title || currentKeyword,
       slug: data.slug,
       wordCount: data.wordCount || 0,
       preview: data.preview || '<p>Article generated successfully</p>',
@@ -1140,14 +1158,14 @@ const generateArticle = async () => {
       liveUrl: data.liveUrl
     }
 
-    addLogEntry(`✓ V3 Generated: ${data.title}`, 'success', 'high', data.liveUrl)
+    addLogEntry(`✓ V3 Generated: ${data.title}`, 'success', 'high', data.liveUrl, undefined, undefined, currentKeyword)
     showToast(`Article generated: ${data.slug}${data.deployed ? ' (Deployed!)' : ''}`)
     keyword.value = ''
     refreshQueue()
     refreshRecent()
   } catch (error) {
     console.error('V3 Generation error:', error)
-    addLogEntry(`✗ Failed to generate: ${keyword.value}`, 'error')
+    addLogEntry(`✗ Failed to generate: ${currentKeyword}`, 'error', undefined, undefined, undefined, undefined, currentKeyword)
     showToast('Failed to generate article', 'error')
   } finally {
     isGenerating.value = false
@@ -1584,6 +1602,12 @@ onUnmounted(() => {
   color: #6b7280;
 }
 
+.progress-eta {
+  font-size: 13px;
+  color: #6b7280;
+  margin-left: 8px;
+}
+
 /* Input Group */
 .input-group {
   margin-bottom: 16px;
@@ -1912,6 +1936,11 @@ onUnmounted(() => {
   background: #dcfce7;
 }
 
+.polling-indicator.active.error {
+  color: #b45309;
+  background: #fef3c7;
+}
+
 .polling-dot {
   width: 8px;
   height: 8px;
@@ -1922,6 +1951,10 @@ onUnmounted(() => {
 .polling-indicator.active .polling-dot {
   background: #16a34a;
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+.polling-indicator.active.error .polling-dot {
+  background: #b45309;
 }
 
 .last-poll-time {
