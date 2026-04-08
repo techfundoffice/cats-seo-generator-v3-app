@@ -4402,15 +4402,22 @@ Return ONLY valid JSON (no markdown code blocks, no explanation before/after):
     const content = await generateWithCopilotCLI(prompt, 600000);
     console.log(`🤖 [Copilot CLI] Received response (${content.length} chars)`);
 
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*"title"[\s\S]*"conclusion"[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.log('⚠️ [Copilot CLI] No JSON found. Response preview:', content.substring(0, 500));
+    // Extract JSON from response (supports fenced markdown and non-strict field order)
+    let raw = content;
+    const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+    if (fenceMatch) {
+      raw = fenceMatch[1].trim();
+    }
+
+    const firstBrace = raw.indexOf('{');
+    const lastBrace = raw.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      console.log('⚠️ [Copilot CLI] No JSON object found. Response preview:', content.substring(0, 500));
       throw new Error('No article JSON in Copilot response');
     }
 
     // Sanitize JSON: remove control characters that break parsing
-    const sanitizedJson = jsonMatch[0]
+    const sanitizedJson = raw.substring(firstBrace, lastBrace + 1)
       .replace(/[\x00-\x1F\x7F]/g, (char) => {
         // Preserve valid JSON whitespace: tab, newline, carriage return
         if (char === '\t' || char === '\n' || char === '\r') return char;
@@ -4418,6 +4425,11 @@ Return ONLY valid JSON (no markdown code blocks, no explanation before/after):
         return '';
       })
       .replace(/\n\s*\n/g, '\n'); // Collapse multiple newlines
+
+    if (!sanitizedJson.includes('"title"')) {
+      console.log('⚠️ [Copilot CLI] JSON block missing title. Response preview:', content.substring(0, 500));
+      throw new Error('No article JSON in Copilot response (missing title)');
+    }
     
     let article: ArticleData;
     try {
