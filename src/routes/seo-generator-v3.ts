@@ -1768,19 +1768,36 @@ function sanitizeAndParseDiscoveryJSON(raw: string, allExcluded: string[]): Disc
 }
 
 /**
+ * Compress the full exclusion list into a compact topic-area summary (~2K chars max).
+ */
+function buildTopicSummary(slugs: string[]): string {
+  if (slugs.length === 0) return 'none yet';
+  const prefixMap = new Map<string, number>();
+  for (const slug of slugs) {
+    const parts = slug.split('-');
+    const key = parts.slice(0, 3).join('-');
+    prefixMap.set(key, (prefixMap.get(key) || 0) + 1);
+  }
+  const lines = Array.from(prefixMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([prefix, count]) => count > 1 ? `${prefix}-* (${count})` : prefix);
+  return `${slugs.length} categories covered. Topic areas:\n${lines.join(', ')}`;
+}
+
+/**
  * Build the discovery prompt used by all AI strategies.
  */
 function buildDiscoveryPrompt(excludedList: string): string {
-  return `You are a cat niche SEO researcher. Find the next high-value category for catsluvus.com.
+  return `You are a cat product SEO researcher. Find the next HIGH-CPC commercial category for catsluvus.com.
 
-ALREADY COMPLETED OR IN-PROGRESS CATEGORIES (do NOT suggest these):
+COVERED TOPIC AREAS (pick something genuinely different — new product vertical):
 ${excludedList}
 
 REQUIREMENTS:
 1. Must be cat-related (not dogs, not general pets)
-2. Must have affiliate potential (products to recommend)
-3. Must have 10+ keyword opportunities (we target 10 high-quality articles per cluster)
-4. Prioritize high commercial intent (buying keywords)
+2. Must have strong Amazon affiliate potential (physical products)
+3. High CPC / commercial intent — buyers searching to purchase
+4. Must be a NEW topic area not represented in the covered list above
 5. Category slug should be descriptive (e.g., "cat-water-fountains", "cat-beds-blankets")
 6. Think about what cat owners actually buy on Amazon
 
@@ -1812,7 +1829,7 @@ async function discoverNextCategory(): Promise<DiscoveredCategory | null> {
   const v2Completed = await getV2CompletedCategories();
   const v3InProgress = await getAllCategoryStatusKeys();
   const allExcluded = [...new Set([...v3Completed, ...v2Completed, ...v3InProgress])];
-  const excludedList = allExcluded.join(', ') || 'none yet';
+  const excludedList = buildTopicSummary(allExcluded);
   addActivityLog('info', `[V3] Excluding ${allExcluded.length} categories`);
 
   const prompt = buildDiscoveryPrompt(excludedList);
@@ -1865,9 +1882,29 @@ async function discoverNextCategory(): Promise<DiscoveredCategory | null> {
     console.log(`[SEO-V3] OpenRouter failed: ${e.message}`);
   }
 
-  // All 3 AI services failed — return null, caller will retry in 2 minutes
-  addActivityLog('warning', '[V3] All 3 AI strategies failed — will retry in 2 minutes');
-  console.log('[SEO-V3] ⚠️ All 3 AI strategies failed. Retrying shortly...');
+  // All 3 strategies returned duplicate/failed — retry once with explicit feedback
+  const rejectedSlug = await (async () => {
+    try {
+      const r = await generateWithCopilotCLI(prompt, AI_GENERATION_TIMEOUT_MS, 1);
+      return r ? sanitizeAndParseDiscoveryJSON(r, [])?.slug ?? null : null;
+    } catch { return null; }
+  })();
+  if (rejectedSlug) {
+    const retryPrompt = buildDiscoveryPrompt(excludedList) +
+      `\n\nIMPORTANT: "${rejectedSlug}" was already suggested and is NOT acceptable. Suggest a completely DIFFERENT cat product vertical.`;
+    try {
+      const r = await generateWithCopilotCLI(retryPrompt, AI_GENERATION_TIMEOUT_MS, 1);
+      const cat = r ? sanitizeAndParseDiscoveryJSON(r, allExcluded) : null;
+      if (cat) {
+        await recordDiscoverySuccess();
+        addActivityLog('success', `[V3] 🎯 Scout discovered (retry): ${cat.name} (${cat.slug})`);
+        return cat;
+      }
+    } catch { /* fall through */ }
+  }
+
+  addActivityLog('warning', '[V3] Scout could not find a unique category — will retry in 2 minutes');
+  console.log('[SEO-V3] ⚠️ All strategies exhausted. Retrying shortly...');
   return null;
 }
 
@@ -3344,12 +3381,11 @@ async function generateWithOpenRouter(prompt: string, timeout: number = 600000):
 
   // Use verified AVAILABLE free models (from OpenRouter API Jan 2026)
   // Prioritizing non-reasoning models that output JSON cleanly
+  // openrouter/free auto-routes to best available free model (Feb 2026, 200K ctx)
   const freeModels = [
-    'meta-llama/llama-3.3-70b-instruct:free',     // Llama 3.3 70B - excellent for JSON
-    'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 24B
-    'google/gemma-3-27b-it:free',                  // Gemma 3 27B
-    'openai/gpt-oss-20b:free',                     // OpenAI OSS 20B
-    'qwen/qwen3-coder:free'                        // Qwen3 Coder - good for structured output
+    'openrouter/free',                              // primary: auto-selects best free model
+    'meta-llama/llama-3.3-70b-instruct:free',      // explicit fallback
+    'google/gemma-3-27b-it:free'                   // explicit fallback
   ];
   
   let lastError: Error | null = null;
