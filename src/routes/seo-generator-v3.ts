@@ -49,6 +49,7 @@ import { searchAmazonProducts, AMAZON_TAG } from '../services/amazon-products';
 import { repairJson } from 'json-repair-js';
 import { searchProductsViaApify, isApifyAvailable, type ApifySearchResult } from '../services/apify-amazon';
 import { saveGenerationRecord, saveErrorRecord, appendPageSpeedToHistory, updateCategoryProgress, type GenerationRecord, type ErrorRecord } from '../services/generation-history';
+import { parseArticleJsonResponse } from '../services/article-json-parser';
 
 // Lazy-load google-search-console to avoid 20+ second startup delay from googleapis
 let gscModule: any = null;
@@ -4402,31 +4403,19 @@ Return ONLY valid JSON (no markdown code blocks, no explanation before/after):
     const content = await generateWithCopilotCLI(prompt, 600000);
     console.log(`🤖 [Copilot CLI] Received response (${content.length} chars)`);
 
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*"title"[\s\S]*"conclusion"[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.log('⚠️ [Copilot CLI] No JSON found. Response preview:', content.substring(0, 500));
-      throw new Error('No article JSON in Copilot response');
-    }
-
-    // Sanitize JSON: remove control characters that break parsing
-    const sanitizedJson = jsonMatch[0]
-      .replace(/[\x00-\x1F\x7F]/g, (char) => {
-        // Preserve valid JSON whitespace: tab, newline, carriage return
-        if (char === '\t' || char === '\n' || char === '\r') return char;
-        // Remove other control characters
-        return '';
-      })
-      .replace(/\n\s*\n/g, '\n'); // Collapse multiple newlines
-    
+    // Extract/parse JSON from model output
     let article: ArticleData;
     try {
-      article = JSON.parse(sanitizedJson) as ArticleData;
+      article = parseArticleJsonResponse<ArticleData>(content);
     } catch (parseErr: any) {
-      console.log(`⚠️ [Copilot CLI] JSON.parse failed: ${parseErr.message}, attempting json-repair...`);
-      const repaired = repairJson(sanitizedJson, { returnObjects: false }) as string;
-      article = JSON.parse(repaired) as ArticleData;
-      console.log(`✅ [Copilot CLI] json-repair recovered article successfully`);
+      console.log('⚠️ [Copilot CLI] Failed to parse article JSON. Response preview:', content.substring(0, 500));
+      throw parseErr;
+    }
+    if (!article.title || typeof article.title !== 'string') {
+      article.title = keyword;
+    }
+    if (!article.metaDescription || typeof article.metaDescription !== 'string') {
+      article.metaDescription = `Learn about ${keyword} and compare top options.`; 
     }
     article = await grammarCheckArticle(article);  // Harper runs first on plain text
     article = normalizeArticleContent(article, { topicKeyword: keyword });     // Then wrap in <p> tags
