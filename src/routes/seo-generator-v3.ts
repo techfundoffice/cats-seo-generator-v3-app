@@ -4292,6 +4292,108 @@ async function getSEOTools() {
  * Generate article using GitHub Copilot CLI directly
  * Uses npx copilot -p (official CLI prompt mode that actually works)
  */
+// ============================================================================
+// MOCK RESPONSE FOR DEVELOPMENT (when API keys are placeholder)
+// ============================================================================
+
+async function getMockArticleResponse(keyword: string, slug: string): Promise<{
+  success: boolean;
+  article?: ArticleData;
+  slug?: string;
+  deployed?: boolean;
+  liveUrl?: string | null;
+  serpAnalysis?: any;
+  error?: string;
+}> {
+  console.log(`🎭 [MOCK] Generating mock article for "${keyword}"`);
+
+  const mockArticle: ArticleData = {
+    title: `Best ${keyword} Plans ${CURRENT_YEAR}: Complete Guide & Reviews`,
+    metaDescription: `Compare the best ${keyword} options for ${CURRENT_YEAR}. Expert reviews, pricing, coverage details, and FAQs to help you choose the right plan for your pet.`,
+    quickAnswer: `The best ${keyword} depends on your needs, but Lemonade offers excellent coverage starting at $15/month with fast claims processing. For comprehensive protection, consider Trupanion with 90% reimbursement rates.`,
+    keyTakeaways: [
+      `Lemonade provides affordable ${keyword} starting at $15/month with AI-powered claims`,
+      "Trupanion offers 90% reimbursement with direct vet payments",
+      "Healthy Paws has unlimited annual payouts with no caps on claims",
+      "ASPCA offers flexible deductibles with good preventive care coverage",
+      "Compare at least 3 providers before choosing a plan"
+    ],
+    introduction: `<p>Finding the right ${keyword} can be overwhelming with so many options available. This comprehensive guide compares the top providers, their coverage details, pricing, and customer reviews to help you make an informed decision for your pet's healthcare needs.</p>`,
+    sections: [
+      {
+        heading: `What is ${keyword}?`,
+        content: `<p>${keyword} provides financial protection for unexpected veterinary expenses. Unlike traditional pet insurance, these plans typically cover accidents, illnesses, and wellness care with varying reimbursement rates and deductibles.</p>`,
+        subsections: []
+      },
+      {
+        heading: "Top 5 Best Pet Insurance Providers",
+        content: `<p>Based on customer reviews, coverage options, and claims processing speed, here are the top ${keyword} providers:</p>`,
+        subsections: [
+          {
+            heading: "1. Lemonade Pet Insurance",
+            content: `<p>Lemonade offers modern ${keyword} with AI-powered claims processing. Key features include:</p><ul><li>Starting at $15/month</li><li>Up to 90% reimbursement</li><li>Fast claims processing (minutes)</li><li>Covers accidents and illnesses</li></ul>`
+          },
+          {
+            heading: "2. Trupanion",
+            content: `<p>Trupanion provides comprehensive ${keyword} with direct vet payments. Benefits include:</p><ul><li>90% reimbursement rate</li><li>Direct payment to vets</li><li>No annual payout limits</li><li>24/7 customer support</li></ul>`
+          }
+        ]
+      },
+      {
+        heading: "How to Choose the Right Pet Insurance",
+        content: `<p>When selecting ${keyword}, consider these important factors:</p><ul><li><strong>Coverage type:</strong> Accident-only vs comprehensive</li><li><strong>Reimbursement rate:</strong> 70%, 80%, or 90%</li><li><strong>Deductible amount:</strong> $100-$500 annually</li><li><strong>Claims process:</strong> Direct payment vs reimbursement</li></ul>`,
+        subsections: []
+      }
+    ],
+    faqs: [
+      {
+        question: `What does ${keyword} typically cover?`,
+        answer: `${keyword} usually covers accidents, illnesses, emergency care, and sometimes preventive care like vaccinations and dental cleanings.`
+      },
+      {
+        question: "How much does pet insurance cost?",
+        answer: `${keyword} premiums typically range from $15-$50 per month depending on your pet's age, breed, and coverage level.`
+      },
+      {
+        question: "When should I get pet insurance?",
+        answer: "It's best to get pet insurance when your pet is young and healthy, before any pre-existing conditions develop."
+      }
+    ],
+    conclusion: `<p>Choosing the right ${keyword} requires careful consideration of your pet's needs, your budget, and the coverage options available. Lemonade and Trupanion consistently rank among the top providers for their comprehensive coverage and customer service. Compare multiple options and read recent reviews before making your decision.</p>`,
+    comparisonTable: {
+      headers: ['Provider', 'Monthly Cost', 'Reimbursement', 'Deductible', 'Rating'],
+      rows: [
+        ['Lemonade', '$15-30', 'Up to 90%', '$100-500', '4.6/5'],
+        ['Trupanion', '$25-45', '90%', '$0-500', '4.5/5'],
+        ['Healthy Paws', '$20-40', 'Unlimited', '$100-250', '4.7/5'],
+        ['ASPCA', '$18-35', 'Up to 90%', '$100-500', '4.4/5'],
+        ['Embrace', '$22-42', '80-90%', '$200-500', '4.3/5']
+      ]
+    },
+    externalLinks: [
+      { url: 'https://www.aspca.org/pet-care/general-pet-care/pet-insurance', text: 'ASPCA Pet Insurance Guide', context: 'General pet insurance information' },
+      { url: 'https://www.avma.org/resources-tools/pet-owners/petcare/pet-insurance', text: 'AVMA Pet Insurance Resources', context: 'Veterinary perspective on pet insurance' }
+    ]
+  };
+
+  return {
+    success: true,
+    article: mockArticle,
+    slug: slug,
+    deployed: false,
+    liveUrl: null,
+    serpAnalysis: {
+      targetWordCount: 2500,
+      avgWordCount: 2200,
+      commonTopics: ['coverage options', 'pricing', 'claims process', 'customer reviews'],
+      contentGaps: ['2026 updates', 'new providers', 'cost analysis'],
+      competitorHeadings: ['What is Pet Insurance?', 'Top Providers', 'Coverage Comparison', 'How to Choose'],
+      competitorFAQs: [`What does ${keyword} cover?`, 'How much does it cost?', 'Which is best?'],
+      competitorEntities: ['Lemonade', 'Trupanion', 'Healthy Paws', 'ASPCA']
+    }
+  };
+}
+
 async function generateWithCopilotSDK(keyword: string): Promise<{
   success: boolean;
   article?: ArticleData;
@@ -4302,6 +4404,15 @@ async function generateWithCopilotSDK(keyword: string): Promise<{
   error?: string;
 }> {
   const slug = keywordToSlug(keyword);
+
+  // CHECK FOR MOCK MODE - Return mock data immediately if API keys are placeholder
+  const anthropicKey = secrets.get('ANTHROPIC_API_KEY') || process.env.ANTHROPIC_API_KEY;
+  const isMockMode = !anthropicKey || anthropicKey === 'your-anthropic-api-key-here' || anthropicKey.startsWith('sk-ant-placeholder');
+  
+  if (isMockMode) {
+    console.log(`🎭 [MOCK MODE] Using mock response for "${keyword}" (placeholder API keys detected)`);
+    return await getMockArticleResponse(keyword, slug);
+  }
 
   try {
     console.log(`🤖 [Copilot CLI] Generating article for: "${keyword}"`);
