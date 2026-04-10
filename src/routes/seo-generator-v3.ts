@@ -3383,15 +3383,28 @@ async function generateWithOpenRouter(prompt: string, timeout: number = 600000):
   // Prioritizing non-reasoning models that output JSON cleanly
   // openrouter/free auto-routes to best available free model (Feb 2026, 200K ctx)
   const freeModels = [
-    'openrouter/free',                              // primary: auto-selects best free model
-    'meta-llama/llama-3.3-70b-instruct:free',      // explicit fallback
-    'google/gemma-3-27b-it:free'                   // explicit fallback
+    'openrouter/free',                                    // primary: auto-selects best free model
+    'openrouter/free',                                    // retry: picks a different underlying model on 429
+    'meta-llama/llama-3.3-70b-instruct:free',            // explicit fallback
+    'google/gemma-3-27b-it:free',                        // explicit fallback
+    'deepseek/deepseek-chat:free',                        // additional fallback
+    'mistralai/mistral-7b-instruct:free',                // additional fallback
+    'qwen/qwen-2-7b-instruct:free',                      // additional fallback
+    'openrouter/free',                                    // final retry after waiting
   ];
   
   let lastError: Error | null = null;
+  let consecutiveRateLimits = 0;
   
   for (const model of freeModels) {
     try {
+      // On consecutive 429s, wait before retrying
+      if (consecutiveRateLimits > 0) {
+        const waitMs = Math.min(consecutiveRateLimits * 5000, 30000);
+        console.log(`⏳ [OpenRouter] Rate limited ${consecutiveRateLimits}x, waiting ${waitMs/1000}s before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+      }
+      
       console.log(`🌐 [OpenRouter] Trying ${model}...`);
       
       const controller = new AbortController();
@@ -3422,8 +3435,11 @@ async function generateWithOpenRouter(prompt: string, timeout: number = 600000):
         const errorText = await response.text();
         console.log(`⚠️ [OpenRouter] ${model} failed: ${response.status} - ${errorText.substring(0, 200)}`);
         lastError = new Error(`OpenRouter ${model}: ${response.status}`);
+        if (response.status === 429) consecutiveRateLimits++;
+        else consecutiveRateLimits = 0;
         continue;
       }
+      consecutiveRateLimits = 0;
       
       const data = await response.json() as any;
       const content = data.choices?.[0]?.message?.content;
