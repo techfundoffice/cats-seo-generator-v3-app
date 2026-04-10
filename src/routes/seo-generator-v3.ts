@@ -8439,27 +8439,50 @@ PROGRAMMATIC SEO QUALITY GATES (MANDATORY):
     let aiModelUsed = 'unknown';
     const maxAiAttempts = 2;
     const aiStartTime = Date.now();
+    let claudeFailed = false;
     for (let aiAttempt = 1; aiAttempt <= maxAiAttempts; aiAttempt++) {
       const attemptPrompt = aiAttempt === 1 ? prompt : `IMPORTANT: You MUST respond with ONLY a valid JSON object starting with { and ending with }. No explanations, no markdown, no text before or after the JSON. Just the raw JSON object.\n\n${prompt}`;
       if (aiAttempt > 1) {
         addActivityLog('info', `[Step 5/12] Retry ${aiAttempt}/${maxAiAttempts} — forcing JSON output`, { keyword: keyword.keyword, step: '5/12', attempt: aiAttempt });
       }
-      const aiResult = await generateWithClaudeAgentSdk(attemptPrompt, { maxTokens: 16000 });
-      if (!aiResult || !aiResult.content) {
-        if (aiAttempt === maxAiAttempts) throw new Error(`Claude Agent SDK failed: No content returned`);
-        console.log(`[SEO-V3] ⚠️ AI attempt ${aiAttempt}/${maxAiAttempts} returned empty, retrying...`);
-        addActivityLog('info', `[Step 5/12] Attempt ${aiAttempt} returned empty, retrying...`, { keyword: keyword.keyword, step: '5/12', attempt: aiAttempt });
-        continue;
+      try {
+        const aiResult = await generateWithClaudeAgentSdk(attemptPrompt, { maxTokens: 16000 });
+        if (!aiResult || !aiResult.content) {
+          if (aiAttempt === maxAiAttempts) { claudeFailed = true; break; }
+          console.log(`[SEO-V3] ⚠️ AI attempt ${aiAttempt}/${maxAiAttempts} returned empty, retrying...`);
+          addActivityLog('info', `[Step 5/12] Attempt ${aiAttempt} returned empty, retrying...`, { keyword: keyword.keyword, step: '5/12', attempt: aiAttempt });
+          continue;
+        }
+        response = aiResult.content;
+        aiModelUsed = aiResult.model || 'unknown';
+        if (!response.includes('{')) {
+          if (aiAttempt === maxAiAttempts) break;
+          console.log(`[SEO-V3] ⚠️ AI attempt ${aiAttempt}/${maxAiAttempts} returned no JSON (${response.length} chars text), retrying with JSON-forcing prompt...`);
+          addActivityLog('info', `[Step 5/12] Attempt ${aiAttempt} returned ${response.length} chars but no JSON, retrying...`, { keyword: keyword.keyword, step: '5/12', attempt: aiAttempt, chars: response.length });
+          continue;
+        }
+        break;
+      } catch (claudeErr: any) {
+        console.log(`[SEO-V3] ⚠️ Claude attempt ${aiAttempt} threw: ${claudeErr.message}`);
+        if (aiAttempt === maxAiAttempts) { claudeFailed = true; }
       }
-      response = aiResult.content;
-      aiModelUsed = aiResult.model || 'unknown';
-      if (!response.includes('{')) {
-        if (aiAttempt === maxAiAttempts) break;
-        console.log(`[SEO-V3] ⚠️ AI attempt ${aiAttempt}/${maxAiAttempts} returned no JSON (${response.length} chars text), retrying with JSON-forcing prompt...`);
-        addActivityLog('info', `[Step 5/12] Attempt ${aiAttempt} returned ${response.length} chars but no JSON, retrying...`, { keyword: keyword.keyword, step: '5/12', attempt: aiAttempt, chars: response.length });
-        continue;
+    }
+    // Fallback to OpenRouter if Claude quota exhausted or failed
+    if (claudeFailed || !response.includes('{')) {
+      console.log(`[SEO-V3] 🔄 [Step 5/12] Claude failed — falling back to OpenRouter for article generation...`);
+      addActivityLog('info', `[Step 5/12] Claude quota exhausted — trying OpenRouter fallback`, { keyword: keyword.keyword, step: '5/12' });
+      try {
+        const jsonPrompt = `IMPORTANT: You MUST respond with ONLY a valid JSON object. No markdown, no explanations, no text before or after the JSON.\n\n${prompt}`;
+        response = await generateWithOpenRouter(jsonPrompt, 300000);
+        aiModelUsed = 'openrouter/free';
+        if (response.includes('<think>')) {
+          response = response.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        }
+        console.log(`[SEO-V3] ✅ [Step 5/12] OpenRouter fallback succeeded (${response.length} chars)`);
+        addActivityLog('info', `[Step 5/12] OpenRouter fallback succeeded (${response.length} chars)`, { keyword: keyword.keyword, step: '5/12', model: 'openrouter/free' });
+      } catch (orErr: any) {
+        throw new Error(`Claude Agent SDK and OpenRouter both failed: ${orErr.message}`);
       }
-      break;
     }
     const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
     console.log(`[SEO-V3] [Step 5/12] ✓ AI response received via ${aiModelUsed} (${response.length} chars, ${aiDuration}s)`);
