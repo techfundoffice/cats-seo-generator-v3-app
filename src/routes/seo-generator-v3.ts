@@ -3751,7 +3751,17 @@ function normalizeKeyTakeawayItem(raw: unknown): string | null {
 
 function normalizeKeyTakeawaysArray(article: ArticleData): void {
   const kt = article.keyTakeaways as unknown;
-  if (!kt || !Array.isArray(kt)) return;
+  if (!kt) return;
+  if (typeof kt === 'string') {
+    // Free models sometimes return a newline/comma-delimited string
+    const items = (kt as string).split(/\n|,\s*/).map(s => s.trim()).filter(Boolean);
+    article.keyTakeaways = items.length > 0 ? items : undefined;
+    return;
+  }
+  if (!Array.isArray(kt)) {
+    article.keyTakeaways = undefined;
+    return;
+  }
   const out: string[] = [];
   for (const item of kt) {
     const s = normalizeKeyTakeawayItem(item);
@@ -8558,6 +8568,11 @@ PROGRAMMATIC SEO QUALITY GATES (MANDATORY):
     });
     if (Array.isArray(article.introduction)) article.introduction = (article.introduction as any[]).join('\n');
     if (Array.isArray(article.conclusion)) article.conclusion = (article.conclusion as any[]).join('\n');
+    normalizeKeyTakeawaysArray(article);
+    // Ensure comparisonTable.rows is an array
+    if (article.comparisonTable && !Array.isArray(article.comparisonTable.rows)) {
+      article.comparisonTable.rows = [];
+    }
 
     currentStep = '5c/12: Output Quality Validation';
     updateSessionStage(keyword.keyword, '5c/12: Output Quality Validation');
