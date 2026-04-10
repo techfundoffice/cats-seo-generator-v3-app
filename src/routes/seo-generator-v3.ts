@@ -3944,7 +3944,8 @@ function validateArticleOutputQuality(article: ArticleData): { ok: boolean; issu
   if (sections.length < 3) issues.push(`sections: only ${sections.length} (need at least 3)`);
   sections.forEach((s, i) => {
     if (!s.heading?.trim()) issues.push(`Section ${i + 1}: empty heading`);
-    if (!s.content?.trim() || s.content.trim().length < 60) {
+    const contentStr = typeof s.content === 'string' ? s.content : Array.isArray(s.content) ? (s.content as string[]).join('\n') : String(s.content || '');
+    if (!contentStr.trim() || contentStr.trim().length < 60) {
       issues.push(`Section ${i + 1}: content missing or shorter than 60 characters`);
     }
   });
@@ -3953,7 +3954,8 @@ function validateArticleOutputQuality(article: ArticleData): { ok: boolean; issu
   if (faqs.length < 4) issues.push(`FAQs: only ${faqs.length} (need at least 4)`);
   faqs.forEach((f, i) => {
     if (!f.question?.trim()) issues.push(`FAQ ${i + 1}: empty question`);
-    if (!f.answer?.trim() || f.answer.trim().length < 40) {
+    const answerStr = typeof f.answer === 'string' ? f.answer : Array.isArray(f.answer) ? (f.answer as string[]).join('\n') : String(f.answer || '');
+    if (!answerStr.trim() || answerStr.trim().length < 40) {
       issues.push(`FAQ ${i + 1}: answer missing or shorter than 40 characters`);
     }
   });
@@ -8545,6 +8547,18 @@ PROGRAMMATIC SEO QUALITY GATES (MANDATORY):
     }
 
     // 5c/12: Output quality validation + optional one-shot LLM repair (before Harper)
+    // Normalize any array/non-string fields that free models may return
+    (article.sections || []).forEach((s: any) => {
+      if (Array.isArray(s.content)) s.content = s.content.join('\n');
+      else if (s.content !== null && typeof s.content !== 'string') s.content = String(s.content);
+    });
+    (article.faqs || []).forEach((f: any) => {
+      if (Array.isArray(f.answer)) f.answer = f.answer.join('\n');
+      else if (f.answer !== null && typeof f.answer !== 'string') f.answer = String(f.answer);
+    });
+    if (Array.isArray(article.introduction)) article.introduction = (article.introduction as any[]).join('\n');
+    if (Array.isArray(article.conclusion)) article.conclusion = (article.conclusion as any[]).join('\n');
+
     currentStep = '5c/12: Output Quality Validation';
     updateSessionStage(keyword.keyword, '5c/12: Output Quality Validation');
     {
