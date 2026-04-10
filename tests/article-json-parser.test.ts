@@ -21,4 +21,17 @@ describe('parseArticleJsonResponse', () => {
     const out = parseArticleJsonResponse<{ metaDescription: string }>('{"metaDescription":"x"}');
     expect(out.metaDescription).toBe('x');
   });
+
+  test('strips invalid control characters before parsing', () => {
+    const controlChar = String.fromCharCode(1);
+    const input = `{"title":"My${controlChar} Title","metaDescription":"ok"}`;
+    const out = parseArticleJsonResponse<{ title: string }>(input);
+    expect(out.title).toBe('My Title');
+  });
+
+  test('repairs mildly malformed json (trailing comma)', () => {
+    const input = '{"title":"Recovered","metaDescription":"ok",}';
+    const out = parseArticleJsonResponse<{ title: string }>(input);
+    expect(out.title).toBe('Recovered');
+  });
 });
