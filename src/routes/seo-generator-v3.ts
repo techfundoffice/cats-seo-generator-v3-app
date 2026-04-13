@@ -4373,7 +4373,8 @@ async function getMockArticleResponse(keyword: string, slug: string): Promise<{
     externalLinks: [
       { url: 'https://www.aspca.org/pet-care/general-pet-care/pet-insurance', text: 'ASPCA Pet Insurance Guide', context: 'General pet insurance information' },
       { url: 'https://www.avma.org/resources-tools/pet-owners/petcare/pet-insurance', text: 'AVMA Pet Insurance Resources', context: 'Veterinary perspective on pet insurance' }
-    ]
+    ],
+    wordCount: 2500
   };
 
   return {
